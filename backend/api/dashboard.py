@@ -1,18 +1,16 @@
 from fastapi import APIRouter
 from engine.sentiment import detect_sentiment, should_auto_hide, should_flag_for_collab
+from agent.graph import graph          # ← ADD THIS
+from db.supabase_client import supabase  # ← ADD THIS
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.post("/test-sentiment")
 async def test_sentiment(data: dict):
-    """Test sentiment detection on any comment"""
-    
     comment = data.get("comment", "")
-    
     sentiment = await detect_sentiment(comment)
     auto_hide = should_auto_hide(sentiment, comment)
     flag_collab = should_flag_for_collab(sentiment)
-    
     return {
         "comment": comment,
         "sentiment": sentiment,
@@ -32,3 +30,40 @@ def get_recommended_action(sentiment: str) -> str:
         "other": "Send to AI for reply"
     }
     return actions.get(sentiment, "Send to AI")
+
+@router.post("/test-agent")
+async def test_agent(data: dict):
+    saved = supabase.table("comments").insert({
+        "influencer_id": data["influencer_id"],
+        "instagram_comment_id": f"test_{data['comment'][:10]}",
+        "post_id": data.get("post_id", "test_post"),
+        "username": data.get("username", "test_user"),
+        "text": data["comment"],
+        "handled_by": "pending",
+        "sentiment": "unknown"
+    }).execute()
+    
+    comment_id = saved.data[0]["id"]
+    
+    result = await graph.ainvoke({
+        "comment_id": comment_id,
+        "comment_text": data["comment"],
+        "influencer_id": data["influencer_id"],
+        "post_id": data.get("post_id", "test_post"),
+        "username": data.get("username", "test_user"),
+        "sentiment": "",
+        "matched_rule": None,
+        "similar_replies": [],
+        "generated_reply": "",
+        "action_taken": "",
+        "post_mode": ""
+    })
+    
+    return {
+        "comment": data["comment"],
+        "sentiment": result["sentiment"],
+        "action_taken": result["action_taken"],
+        "generated_reply": result["generated_reply"],
+        "post_mode": result["post_mode"],
+        "rule_matched": result["matched_rule"] is not None
+    }
