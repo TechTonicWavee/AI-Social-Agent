@@ -66,7 +66,7 @@ async def receive_webhook(request: Request):
 
 # ── Step 3: Handle New Comment ────────────────────────────────────────────────
 async def handle_new_comment(value: dict):
-    """Save incoming comment to database"""
+    """Save incoming comment to database and process with agent"""
     
     try:
         comment_id = value.get("id")
@@ -77,7 +77,6 @@ async def handle_new_comment(value: dict):
         
         print(f"💬 New comment from @{username}: '{comment_text}'")
         
-        # Find which influencer owns this post
         influencer = supabase.table("influencers")\
             .select("id")\
             .eq("instagram_id", instagram_user_id)\
@@ -89,7 +88,6 @@ async def handle_new_comment(value: dict):
         
         influencer_id = influencer.data[0]["id"]
         
-        # Check if comment already exists (Meta sometimes sends duplicates)
         existing = supabase.table("comments")\
             .select("id")\
             .eq("instagram_comment_id", comment_id)\
@@ -99,7 +97,6 @@ async def handle_new_comment(value: dict):
             print(f"⚠️ Duplicate comment ignored: {comment_id}")
             return
         
-        # Save comment to database
         saved = supabase.table("comments").insert({
             "influencer_id": influencer_id,
             "instagram_comment_id": comment_id,
@@ -110,10 +107,25 @@ async def handle_new_comment(value: dict):
             "sentiment": "unknown"
         }).execute()
         
-        print(f"✅ Comment saved to database: {comment_id}")
+        db_comment_id = saved.data[0]["id"]
+        print(f"✅ Comment saved: {comment_id}")
         
-        # TODO: In Prompt 3 we will send this to LangGraph agent
-        # await process_comment(saved.data[0]["id"], influencer_id)
+        # 🚀 Run through full LangGraph agent
+        result = await graph.ainvoke({
+            "comment_id": db_comment_id,
+            "comment_text": comment_text,
+            "influencer_id": influencer_id,
+            "post_id": post_id,
+            "username": username,
+            "sentiment": "",
+            "matched_rule": None,
+            "similar_replies": [],
+            "generated_reply": "",
+            "action_taken": "",
+            "post_mode": ""
+        })
+        
+        print(f"✅ Agent completed: {result['action_taken']}")
         
     except Exception as e:
         print(f"❌ Error handling comment: {str(e)}")
