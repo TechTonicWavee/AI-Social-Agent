@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Sidebar from '../components/Sidebar';
+import Sidebar from '../components/sidebar';
 import { getOverview, getRecentReplies, getSentimentBreakdown } from '../lib/api';
 import { MessageCircle, Bot, Zap, Clock, TrendingUp } from 'lucide-react';
 
