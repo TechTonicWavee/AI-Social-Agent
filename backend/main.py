@@ -7,7 +7,8 @@ from models.ollama_client import model
 from api.webhooks import router as webhook_router
 from api.rules import router as rules_router
 from api.dashboard import router as dashboard_router
-from api.auth import router as auth_router  # ← ADD THIS
+from api.auth import router as auth_router
+from api.analytics import router as analytics_router
 
 load_dotenv()
 
@@ -27,7 +28,8 @@ app.add_middleware(
 app.include_router(webhook_router)
 app.include_router(rules_router)
 app.include_router(dashboard_router)
-app.include_router(auth_router)  # ← ADD THIS
+app.include_router(auth_router)
+app.include_router(analytics_router)
 
 @app.get("/")
 async def root():
