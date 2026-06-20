@@ -10,6 +10,7 @@ const links = [
     { href: '/dashboard/rule', label: 'Rules', icon: Zap },
     { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart2 },
     { href: '/dashboard/collab', label: 'Collabs', icon: Users },
+    { href: '/dashboard/test', label: 'Test Agent', icon: Bot },
 ];
 
 export default function Sidebar() {
@@ -34,8 +35,8 @@ export default function Sidebar() {
                             key={href}
                             href={href}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${active
-                                    ? 'bg-purple-600 text-white'
-                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                ? 'bg-purple-600 text-white'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                                 }`}
                         >
                             <Icon size={16} />
