@@ -2,6 +2,7 @@ from agent.state import CommentState
 from db.supabase_client import supabase
 from engine.reply_poster import execute_reply_action
 from engine.rule_engine import execute_rule
+from rag.embeddings import save_reply_with_embedding
 
 async def reply_node(state: CommentState) -> CommentState:
     """Save reply and post to Instagram"""
@@ -25,23 +26,29 @@ async def reply_node(state: CommentState) -> CommentState:
     print(f"💾 Reply node - mode: {mode}, action: {action}")
     
     if mode == "auto":
-        # Save to database
+        saved_reply = None
         if reply_text:
-            supabase.table("replies").insert({
+            saved_reply = supabase.table("replies").insert({
                 "comment_id": state["comment_id"],
                 "influencer_id": state["influencer_id"],
                 "text": reply_text,
                 "source": "ai" if not state.get("matched_rule") else "rule",
                 "status": "sent"
             }).execute()
+            
+            # Save embedding for future RAG
+            if saved_reply and saved_reply.data:
+                await save_reply_with_embedding(
+                    reply_id=saved_reply.data[0]["id"],
+                    comment_text=state["comment_text"],
+                    reply_text=reply_text
+                )
         
-        # Update comment status
         supabase.table("comments")\
             .update({"handled_by": action or "ai"})\
             .eq("id", state["comment_id"])\
             .execute()
         
-        # Post to Instagram (only works with real access token)
         await execute_reply_action(
             action=action or "ai_replied",
             instagram_comment_id=state["comment_id"],

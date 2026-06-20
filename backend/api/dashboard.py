@@ -1,7 +1,10 @@
 from fastapi import APIRouter
 from engine.sentiment import detect_sentiment, should_auto_hide, should_flag_for_collab
-from agent.graph import graph          # ← ADD THIS
-from db.supabase_client import supabase  # ← ADD THIS
+from agent.graph import graph
+from db.supabase_client import supabase
+from rag.embeddings import embed_all_existing_replies
+from rag.style_analyser import analyze_influencer_style
+from rag.vector_search import search_similar_replies
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -66,4 +69,26 @@ async def test_agent(data: dict):
         "generated_reply": result["generated_reply"],
         "post_mode": result["post_mode"],
         "rule_matched": result["matched_rule"] is not None
+    }
+
+@router.post("/analyze-style")
+async def analyze_style(data: dict):
+    influencer_id = data["influencer_id"]
+    embedded_count = await embed_all_existing_replies(influencer_id)
+    personality = await analyze_influencer_style(influencer_id)
+    return {
+        "replies_embedded": embedded_count,
+        "personality": personality
+    }
+
+@router.post("/test-rag")
+async def test_rag(data: dict):
+    results = await search_similar_replies(
+        comment_text=data["comment"],
+        influencer_id=data["influencer_id"]
+    )
+    return {
+        "comment": data["comment"],
+        "similar_replies_found": len(results),
+        "results": results
     }
