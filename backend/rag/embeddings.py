@@ -10,7 +10,7 @@ async def generate_embedding(text: str) -> list | None:
             response = await client.post(
                 f"{OLLAMA_URL}/api/embeddings",
                 json={
-                    "model": "llama3.2",
+                    "model": "nomic-embed-text",  
                     "prompt": text
                 }
             )
@@ -34,29 +34,22 @@ async def save_reply_with_embedding(
     comment_text: str,
     reply_text: str
 ) -> bool:
-    """Generate and save embedding for a reply"""
-    
-    # Combine comment + reply for better embedding
     combined_text = f"Comment: {comment_text}\nReply: {reply_text}"
-    
     embedding = await generate_embedding(combined_text)
     
     if not embedding:
         return False
     
-    # Pad or truncate to 768 dimensions if needed
-    if len(embedding) < 768:
-        embedding = embedding + [0.0] * (768 - len(embedding))
-    elif len(embedding) > 768:
-        embedding = embedding[:768]
+    print(f"📐 Embedding dimensions: {len(embedding)}")
     
+    # nomic-embed-text returns 768 dimensions - use as is
     try:
-        supabase.table("replies")\
+        result = supabase.table("replies")\
             .update({"embedding": embedding})\
             .eq("id", reply_id)\
             .execute()
         
-        print(f"✅ Embedding saved for reply: {reply_id}")
+        print(f"✅ Embedding saved: {result}")
         return True
         
     except Exception as e:
